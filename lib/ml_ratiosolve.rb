@@ -46,8 +46,8 @@ module MLRatioSolveBin
     puts "gamma: #{best[:gamma]}"
     puts "log l: #{best[:l]}"
 
-    sim_results = ErrorBoostrapping.estimate_with_gen_data(n_for_bootstrap, best, x, n_iter, tol)
-    ci_lower, ci_upper = ErrorBoostrapping.bootstrap_ci(sim_results, ci_level)
+    sim_results = ErrorBootstrapping.estimate_with_gen_data(n_for_bootstrap, best, x, n_iter, tol)
+    ci_lower, ci_upper = ErrorBootstrapping.bootstrap_ci(sim_results, ci_level)
     puts "boostrapped #{ci_level*100}% confidence interval: "
     puts ci_lower.to_a.join(", ")
     puts ci_upper.to_a.join(", ")

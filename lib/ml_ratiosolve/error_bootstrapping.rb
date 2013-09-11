@@ -27,7 +27,7 @@
 # 
 # @author Colin J. Fuller
 # 
-module ErrorBoostrapping
+module ErrorBootstrapping
   class << self
 
     # 

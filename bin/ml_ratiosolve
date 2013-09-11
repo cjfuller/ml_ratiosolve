@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+
+require 'trollop'
+
+opts = Trollop::options do 
+  opt :file, "Input file, containing CSV-formatted data with columns corresponding to independent experiments and rows as treatments.", type: :string
+  opt :n_starts, "Number of distinct starting guesses to try for parameter estimation", type: :integer, default: 1000
+  opt :n_iter, "Maximum number of iterations to run per starting guess", type: :integer, default: 1500
+  opt :n_bootstrap, "Number of samples to calculate for parametric bootstrapping of the confidence intervals", type: :integer, default: 1000
+  opt :tol, "If the absolute change in log likelihood of an estimate is less than this, iteration will terminate.", type: :float, default: 1.0e-6
+  opt :ci_level, "Float in the range 0-1 specifiying the level of confidence interval to calculate.  E.g. 0.95 will calculate a 95% confidence interval", type: :float, default: 0.95
+end
+
+MLRatioSolveBin.go(opts)

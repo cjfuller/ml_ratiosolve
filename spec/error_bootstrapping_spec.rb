@@ -1,5 +1,5 @@
 #--
-# ml_ratiosolve.rb
+# error_bootstrapping_spec.rb
 # Copyright (c) 2013 Colin J. Fuller
 # 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -21,36 +21,9 @@
 # SOFTWARE.
 #++
 
-require "ml_ratiosolve/version"
-require 'ml_ratiosolve/ml_ratiosolve'
-require 'ml_ratiosolve/error_bootstrapping'
+require 'ml_ratiosolve'
 
-module MLRatioSolveBin
-
-  def self.go(opts)
-    n_starts = opts[:n_starts]
-    n_iter = opts[:n_iter]
-    n_for_bootstrap = opts[:n_bootstrap]
-    tol = opts[:tol]
-    ci_level = opts[:ci_level]
-
-    x = MLRatioSolve.read_data_from_file(opts[:file])
-
-    n_gammas_to_fit = x.shape[1] - 1
-
-    best = MLRatioSolve.grid_multiple_iters(n_starts, n_gammas_to_fit, n_iter, x, tol)
-
-    puts "Best solution found: "
-    puts "mu: #{best[:mu]}"
-    puts "sig2: #{best[:sig2].map{ |e| Math.sqrt e }.to_s}"
-    puts "gamma: #{best[:gamma]}"
-    puts "log l: #{best[:l]}"
-
-    sim_results = ErrorBoostrapping.estimate_with_gen_data(n_for_bootstrap, best, x, n_iter, tol)
-    ci_lower, ci_upper = ErrorBoostrapping.bootstrap_ci(sim_results, ci_level)
-    puts "boostrapped #{ci_level*100}% confidence interval: "
-    puts ci_lower.to_a.join(", ")
-    puts ci_upper.to_a.join(", ")
-  end
+describe ErrorBootstrapping do 
 
 end
+

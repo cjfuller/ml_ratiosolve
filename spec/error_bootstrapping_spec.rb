@@ -25,5 +25,23 @@ require 'ml_ratiosolve'
 
 describe ErrorBootstrapping do 
 
+  it "should generate random variables with the correct mean" do 
+    ErrorBootstrapping.randnorm(10, 0).should eq 10.0
+  end
+
+  it "should generate random variables with reasonable statitstics" do
+    vars = Array.new(100) { ErrorBootstrapping.randnorm(0, 1) }
+    N[*vars].mean.to_f.abs.should < 0.4
+    (N[*vars].std.to_f - 1).abs.should < 0.4
+  end
+
+  context "data generation" do
+    it "should generate a data matrix of the correct size" do
+      parameters = {mu: N[0,0], sig2: N[1,1], gamma: N[1]}
+      x = N[[0.0], [1.0]]
+      gd = ErrorBootstrapping.gen_data(parameters, x)
+      gd.shape.should eq [2,1]
+    end
+  end
 end
 

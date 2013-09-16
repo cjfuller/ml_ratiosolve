@@ -380,8 +380,8 @@ module MLRatioSolve
             skip_count += 1
           end
         end
-        sem2_i = e/(n-skip_count)
-        sem2_norm = result[:sig2][norm_index]/(n-ni_skip_count)   
+        sem2_i = e/(n-skip_count-1)
+        sem2_norm = result[:sig2][norm_index]/(n-ni_skip_count-1)   
         sem2_i*1.0/result[:mu][norm_index]**2 + sem2_norm*(result[:mu][i]/result[:mu][norm_index]**2)**2
       end
       prop_errors.map { |e| Math.sqrt(e) }

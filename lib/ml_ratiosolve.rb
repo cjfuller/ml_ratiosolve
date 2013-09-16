@@ -33,6 +33,9 @@ module MLRatioSolveBin
     n_for_bootstrap = opts[:n_bootstrap]
     tol = opts[:tol]
     ci_level = opts[:ci_level]
+    norm_index = opts[:norm_index]
+
+    MLRatioSolve.set_skip_indices(opts[:skip])
 
     x = MLRatioSolve.read_data_from_file(opts[:file])
 
@@ -41,16 +44,19 @@ module MLRatioSolveBin
     best = MLRatioSolve.grid_multiple_iters(n_starts, n_gammas_to_fit, n_iter, x, tol)
 
     puts "Best solution found: "
-    puts "mu: #{best[:mu]}"
-    puts "sig2: #{best[:sig2].map{ |e| Math.sqrt e }.to_s}"
+    puts "mu: #{best[:mu]/best[:mu][norm_index]}"
+    puts "sig2: #{best[:sig2].map{ |e| Math.sqrt(e)/best[:mu][norm_index] }.to_s}"
     puts "gamma: #{best[:gamma]}"
     puts "log l: #{best[:l]}"
 
-    sim_results = ErrorBootstrapping.estimate_with_gen_data(n_for_bootstrap, best, x, n_iter, tol)
-    ci_lower, ci_upper = ErrorBootstrapping.bootstrap_ci(sim_results, ci_level)
-    puts "boostrapped #{ci_level*100}% confidence interval: "
-    puts ci_lower.to_a.join(", ")
-    puts ci_upper.to_a.join(", ")
+    puts "Error estimate:"
+    puts MLRatioSolve.ml_sem_estimate(best, norm_index)
+
+    #sim_results = ErrorBootstrapping.estimate_with_gen_data(n_for_bootstrap, best, x, n_iter, tol)
+    #ci_lower, ci_upper = ErrorBootstrapping.bootstrap_ci(sim_results, ci_level)
+    # puts "boostrapped #{ci_level*100}% confidence interval: "
+    # puts ci_lower.to_a.join(", ")
+    # puts ci_upper.to_a.join(", ")
   end
 
 end

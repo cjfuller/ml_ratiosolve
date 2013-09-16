@@ -24,6 +24,30 @@
 require 'csv'
 
 require 'nmatrix'
+require 'inline'
+
+module InlineHelpers
+    # 
+    # The normal probability distribution.
+    # @param  x [Numeric] The point at which to calculate the probability density
+    # @param  m [Numeric] The mean of the distribution
+    # @param  s2 [Numeric] The variance of the distribution
+    # 
+    # @return [Float] The probability density at the specified point
+    # def normpdf(x, m, s2)
+    #   1.0/Math.sqrt(2*Math::PI*s2)*Math.exp(-(x-m)**2/(2.0*s2))
+    # end
+    inline do |builder|
+      builder.include '<math.h>'
+      builder.c "
+        double normpdf(const double x, const double m, const double s2) {
+          const double pi = 3.1415926535897932384626;
+          return 1.0/sqrt(2*pi*s2)*exp(-(x-m)*(x-m)/(2.0*s2));
+        }
+      "
+    end
+
+end
 
 # 
 # Functions for ML estimates of distribution parameters for ratios of Gaussian
@@ -48,7 +72,36 @@ require 'nmatrix'
 # @author Colin J. Fuller
 # 
 module MLRatioSolve
+  self.extend InlineHelpers
   class << self
+
+    # # 
+    # # The normal probability distribution.
+    # # @param  x [Numeric] The point at which to calculate the probability density
+    # # @param  m [Numeric] The mean of the distribution
+    # # @param  s2 [Numeric] The variance of the distribution
+    # # 
+    # # @return [Float] The probability density at the specified point
+    # def normpdf(x, m, s2)
+    #   1.0/Math.sqrt(2*Math::PI*s2)*Math.exp(-(x-m)**2/(2.0*s2))
+    # end
+
+    # 
+    # Sets up the array of indices to skip from a string.
+    # @param  skip_str [String] A string containing treatment, experiment index 
+    #   pairs.  Pairs should have a comma internally and a colon between 
+    #   successive pairs.  E.g. '1,2;0,1'
+    # 
+    # @return [void]
+    def set_skip_indices(skip_str)
+      if skip_str.empty?
+        @skip_indices = []
+      else
+        skip_pairs = skip_str.split(":")
+        skip_pairs.map! { |e| e.split(',').map { |ee| ee.to_i } }
+        @skip_indices = skip_pairs
+      end
+    end
 
     # 
     # Gets and returns the list of (treatment, experiment) pairs to skip due to
@@ -57,18 +110,7 @@ module MLRatioSolve
     # @return [Array] An array of two element arrays containing treatment index,
     #     experiment index ordered pairs
     def skip_indices
-      [[0,0]]
-    end
-
-    # 
-    # The normal probability distribution.
-    # @param  x [Numeric] The point at which to calculate the probability density
-    # @param  m [Numeric] The mean of the distribution
-    # @param  s2 [Numeric] The variance of the distribution
-    # 
-    # @return [Float] The probability density at the specified point
-    def normpdf(x, m, s2)
-      1.0/Math.sqrt(2*Math::PI*s2)*Math.exp(-(x-m)**2/(2.0*s2))
+      @skip_indices
     end
 
     # 
@@ -89,6 +131,7 @@ module MLRatioSolve
       n = gamma.size
       i.times do |ii|
         n.times do |nn|
+          next if skip_indices.include? [ii,nn]
           ltot += Math.log(normpdf(x[ii,nn], mu[ii]/gamma[nn], sig2[ii]/gamma[nn]**2))
         end
       end
@@ -108,16 +151,19 @@ module MLRatioSolve
     def calculate_mu_i(gamma, x)
       n = gamma.size
       i = x.shape[0]
-      mu = NMatrix.zeros([i])
-      
-      i.times do |ii|
-        count = 0
-        n.times do |nn|
-          next if skip_indices.include? [ii,nn]
-          mu[ii] += gamma[nn]*x[ii,nn]
-          count += 1
+      mu = NMatrix.zeros([i,1])
+      if skip_indices.empty? then
+        mu = x.dot(gamma) / n
+      else
+        i.times do |ii|
+          count = 0
+          n.times do |nn|
+            next if skip_indices.include? [ii,nn]
+            mu[ii] += gamma[nn]*x[ii,nn]
+            count += 1
+          end
+          mu[ii] /= count
         end
-        mu[ii] /= count
       end
 
       mu
@@ -138,7 +184,7 @@ module MLRatioSolve
     def calculate_sig2_i(gamma, x, mu)
       n = gamma.size
       i = mu.size
-      sig2 = NMatrix.zeros([i])
+      sig2 = NMatrix.zeros([i,1])
       
       i.times do |ii|
         count = 0
@@ -166,13 +212,14 @@ module MLRatioSolve
     def calculate_gamma_n(x, mu, sig2)
       n = x.shape[1]
       i = mu.size
-      gamma = NMatrix.zeros([n])
+      gamma = NMatrix.zeros([n,1])
       gamma[0] = 1
 
       1.upto(n-1) do |nn|
         xm_over_s2 = 0
         x2_over_s2 = 0
         i.times do |ii|
+          next if skip_indices.include? [ii,nn]
           xm_over_s2 += x[ii,nn]*mu[ii]/sig2[ii]
           x2_over_s2 += x[ii,nn]**2/sig2[ii]
         end
@@ -240,7 +287,8 @@ module MLRatioSolve
       last_L = -1.0*Float::MAX
       n_iter.times do |it|
         gamma = do_single_iteration(gamma, x, it)
-        l = log_l_fct(gamma, x, calculate_mu_i(gamma,x), calculate_sig2_i(gamma, x, calculate_mu_i(gamma,x)))
+        m = calculate_mu_i(gamma,x)
+        l = log_l_fct(gamma, x, m, calculate_sig2_i(gamma, x, m))
         if tol and (l-last_L).abs < tol then
           break
         end
@@ -296,7 +344,7 @@ module MLRatioSolve
       # counter = 0
 
       grid_recursive(n_gen, n_per, min_range, max_range, Array.new(n_gen, 0.0), 0) do |gamma|
-        result = do_iters_with_start(n_iter, x, [1].concat(gamma), tol)
+        result = do_iters_with_start(n_iter, x, N.new([gamma.size + 1,1],([1.0].concat(gamma))), tol)
         if result[:l] > best[:l] then
           best = result
         end
@@ -308,6 +356,35 @@ module MLRatioSolve
       end
 
       best
+    end
+
+
+    # 
+    # Estimates the SEM for each treatment after normalization.
+    # @param  result [Hash] The results hash as output by #do_iters_with_start
+    # @param  norm_index [Integer] the index of the treatment to which to normalize
+    # 
+    # @return [NMatrix] The SEM estimates for each treatment (vector with I components)
+    def ml_sem_estimate(result, norm_index)
+      ni_skip_count = 0
+      n = result[:gamma].size
+      skip_indices.each do |si|
+        if si[0] == norm_index then
+          ni_skip_count += 1
+        end
+      end   
+      prop_errors = result[:sig2].map.with_index do |e,i| 
+        skip_count = 0
+        skip_indices.each do |si|
+          if si[0] == i then
+            skip_count += 1
+          end
+        end
+        sem2_i = e/(n-skip_count)
+        sem2_norm = result[:sig2][norm_index]/(n-ni_skip_count)   
+        sem2_i*1.0/result[:mu][norm_index]**2 + sem2_norm*(result[:mu][i]/result[:mu][norm_index]**2)**2
+      end
+      prop_errors.map { |e| Math.sqrt(e) }
     end
 
 

@@ -78,7 +78,7 @@ module ErrorBootstrapping
     # 
     # Re-estimate distribution parameters by generating simulated data a number 
     # of times and performing the iterative estimation in MLRatioSolve
-    # @param  n_gen [Numeric] number of datasets to simuilate
+    # @param  n_gen [Numeric] number of datasets to simulate
     # @param  parameters [Hash] A hash containing the parameters from the estimation run on the simulated data.
     # @param  x [NMatrix] The original experimental data
     # @param  n_iter [Numeric] max number of iterations per estimate

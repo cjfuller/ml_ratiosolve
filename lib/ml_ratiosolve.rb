@@ -45,7 +45,7 @@ module MLRatioSolveBin
 
     puts "Best solution found: "
     puts "mu: #{best[:mu]/best[:mu][norm_index]}"
-    puts "sig2: #{best[:sig2].map{ |e| Math.sqrt(e)/best[:mu][norm_index] }.to_s}"
+    puts "sig: #{best[:sig2].map{ |e| Math.sqrt(e)/best[:mu][norm_index] }.to_s}"
     puts "gamma: #{best[:gamma]}"
     puts "log l: #{best[:l]}"
 

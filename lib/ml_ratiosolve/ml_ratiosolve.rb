@@ -116,13 +116,13 @@ module MLRatioSolve
     # 
     # The log likelihood function for the datapoints given a set of distribution
     # parameters.
-    # @param  gamma [NMatrix] The per-experiment scale factors (vector with 
-    #   N elements)
+    # @param  gamma [NMatrix] The per-experiment scale factors (column vector 
+    #   with N elements)
     # @param  x [NMatrix] The data points, an IxN matrix.
-    # @param  mu [NMatrix] The mean parameters for each treatment (vector with I 
-    #   elements)
-    # @param  sig2 [NMatrix] The variance parameters for each treatment (vector 
-    #   with I elements)
+    # @param  mu [NMatrix] The mean parameters for each treatment (column 
+    #   vector with I elements)
+    # @param  sig2 [NMatrix] The variance parameters for each treatment (column 
+    #   vector with I elements)
     # 
     # @return [Float] The log likelihood of the data given the parameters
     def log_l_fct(gamma, x, mu, sig2)
@@ -142,12 +142,12 @@ module MLRatioSolve
     #
     # Given the per-experiment scale factors, calculate the ML estimate of the 
     # mean parameters
-    # @param  gamma [NMatrix] The per-experiment scale factors (vector with N 
-    #   elements)
+    # @param  gamma [NMatrix] The per-experiment scale factors (column vector 
+    #   with N elements)
     # @param  x [NMatrix] The data points, an IxN matrix.
     # 
-    # @return [NMatrix] The ML estimates of the mean parameters (vector with I 
-    #   elements)
+    # @return [NMatrix] The ML estimates of the mean parameters (column vector
+    #   with I elements)
     def calculate_mu_i(gamma, x)
       n = gamma.size
       i = x.shape[0]
@@ -173,14 +173,14 @@ module MLRatioSolve
     # 
     # Given the per-experiment scale factors, calculate the ML estimate of the 
     # variance parameters
-    # @param  gamma [NMatrix] The per-experiment scale factors (vector with N 
-    #   elements)
+    # @param  gamma [NMatrix] The per-experiment scale factors (column vector 
+    #   with N elements)
     # @param  x [NMatrix] The data points, an IxN matrix.
-    # @param  mu [NMatrix] The precalculated ML estimates of the mean parameters 
-    #   for the provided gamma (vector with I elements)
+    # @param  mu [NMatrix] The precalculated ML estimates of the mean 
+    #   parameters for the provided gamma (column vector with I elements)
     # 
-    # @return [NMatrix] The ML estimates of the variance parameters (vector with 
-    #   I elements)
+    # @return [NMatrix] The ML estimates of the variance parameters (column 
+    #   vector with I elements)
     def calculate_sig2_i(gamma, x, mu)
       n = gamma.size
       i = mu.size
@@ -194,48 +194,55 @@ module MLRatioSolve
           count += 1
         end
         sig2[ii] /= count
+        if sig2[ii] < Float::EPSILON**2 then
+          sig2[ii] = Float::EPSILON**2
+        end
       end
 
       sig2
     end
 
+    def calculate_single_gamma(nn, x, mu, sig2)
+      xm_over_s2 = 0
+      x2_over_s2 = 0
+      i = x.shape[0]
+      i.times do |ii|
+        next if skip_indices.include? [ii,nn]
+        xm_over_s2 += x[ii,nn]*mu[ii]/sig2[ii]
+        x2_over_s2 += x[ii,nn]**2/sig2[ii]
+      end
+      (xm_over_s2 + Math.sqrt(xm_over_s2**2 + 4*i*x2_over_s2))/(2*x2_over_s2)
+    end
 
     # 
     # Given the mean and variance parameters, calculate the ML estimate of the 
     # experimental scale factors
     # @param  x [NMatrix] The data points, an IxN matrix.
-    # @param  mu [NMatrix] The mean parameters (vector with I elements)
-    # @param  sig2 [NMatrix] The variance parameters (vector with I elements)
+    # @param  mu [NMatrix] The mean parameters (column vector with I elements)
+    # @param  sig2 [NMatrix] The variance parameters (column vector with I 
+    #   elements)
     # 
     # @return [NMatrix] The ML estimates of the per-expeirment scale factors (  
-    #   vector with N elements)
+    #   column vector with N elements)
     def calculate_gamma_n(x, mu, sig2)
       n = x.shape[1]
       i = mu.size
       gamma = NMatrix.zeros([n,1])
       gamma[0] = 1
-
       1.upto(n-1) do |nn|
-        xm_over_s2 = 0
-        x2_over_s2 = 0
-        i.times do |ii|
-          next if skip_indices.include? [ii,nn]
-          xm_over_s2 += x[ii,nn]*mu[ii]/sig2[ii]
-          x2_over_s2 += x[ii,nn]**2/sig2[ii]
-        end
-        gamma[nn] = (xm_over_s2 + Math.sqrt(xm_over_s2**2 + 4*i*x2_over_s2))/(2*x2_over_s2)
+        gamma[nn] = calculate_single_gamma(nn, x, mu, sig2)
       end
-
       gamma
     end
 
 
     # 
     # Nicely prints the supplied distribution parameters
-    # @param  mu [NMatrix] the mean parameters (vector with I elements)
-    # @param  sig2 [NMatrix] the variance parameters (vector with I elements)
-    # @param  gamma [NMatrix] the per-experiment scale factors (vector with N 
+    # @param  mu [NMatrix] the mean parameters (column vector with I elements)
+    # @param  sig2 [NMatrix] the variance parameters (column vector with I 
     #   elements)
+    # @param  gamma [NMatrix] the per-experiment scale factors (column vector 
+    #   with N elements)
     # @param  x [NMatrix] the experimental data (IxN matrix)
     # @param  iternum [NMatrix] the index of the current iteration
     # 
@@ -254,13 +261,13 @@ module MLRatioSolve
     # 
     # Does one iteration of estimation, taking a starting gamma, calculating mu 
     # and s2, and then recalculating gamma from these
-    # @param  gamma_in [NMatrix] the per-experiment scale factors (vector with N 
-    #   elements)
+    # @param  gamma_in [NMatrix] the per-experiment scale factors (column 
+    #   vector with N elements)
     # @param  x [NMatrix] the experimental data (IxN matrix)
     # @param  iternum [NMatrix] the index of the current iteration
     # 
     # @return [NMatrix] the new estimates of the per-experiment scale factors (
-    #   vector with N elements)
+    #   column vector with N elements)
     def do_single_iteration(gamma_in, x, iternum)
       mu = calculate_mu_i(gamma_in, x)
       sig2 = calculate_sig2_i(gamma_in,x,mu)
@@ -273,8 +280,8 @@ module MLRatioSolve
     # Do a series of iterations of estimation from a supplied starting estimate.
     # @param  n_iter [Numeric] The maximum number of iterations to perform.
     # @param  x [NMatrix] the experimental data (IxN matrix)
-    # @param  gamma_start [NMatrix] the initial guess for the gamma experimental 
-    #   scale factors (vector with N elements)
+    # @param  gamma_start [NMatrix] the initial guess for the gamma 
+    #   experimental scale factors (column vector with N elements)
     # @param  tol=nil [Numeric] if non-nil, the iterations will terminate early 
     #   if the absolute change in the likelihood between two successive 
     #   iterations is less than this
@@ -282,20 +289,117 @@ module MLRatioSolve
     # @return [Hash] the results of the iteration, containing keys for mu, sig2,
     #   gamma, and l, which are the mean, variance, scale factors, and
     #   likelihood, respectively, after iteration completed
-    def do_iters_with_start(n_iter, x, gamma_start, tol=nil)
+    def do_iters_with_start(n_iter, x, gamma_start, tol=nil, debug=false)
       gamma = gamma_start
       last_L = -1.0*Float::MAX
       n_iter.times do |it|
-        gamma = do_single_iteration(gamma, x, it)
-        m = calculate_mu_i(gamma,x)
-        l = log_l_fct(gamma, x, m, calculate_sig2_i(gamma, x, m))
-        if tol and (l-last_L).abs < tol then
+        gamma_candidate = do_single_iteration(gamma, x, it)
+        m = calculate_mu_i(gamma_candidate,x)
+        l = log_l_fct(gamma_candidate, x, m, calculate_sig2_i(gamma_candidate, x, m))
+        if (tol and (l-last_L).abs < tol) or gamma_candidate.to_a.flatten.any?{ |e| not e.finite? } then
           break
         end
+        gamma = gamma_candidate
         last_L = l
       end
       {mu: calculate_mu_i(gamma, x), sig2: calculate_sig2_i(gamma, x, calculate_mu_i(gamma, x)),
         gamma: gamma, l: log_l_fct(gamma, x, calculate_mu_i(gamma,x), calculate_sig2_i(gamma, x, calculate_mu_i(gamma,x)))}
+    end
+
+    def m_est_zerovar(x,i_zero,mi,perm)
+      n = x.shape[1]
+      i = x.shape[0]
+      m = N.zeros([i,1], dtype: x.dtype)
+      i.times do |ii|
+        count = 0
+        n.times do |nn|
+          next if skip_indices.include? [ii,perm[nn]] or skip_indices.include? [i_zero, perm[nn]]
+          m[ii] += mi*x[ii,nn]/x[i_zero,nn]
+          count += 1
+        end
+        m[ii] /= count
+      end
+      m
+    end
+
+    def s2_est_zerovar(x, i_zero, m, perm)
+      n = x.shape[1]
+      i = x.shape[0]
+      s2_est = N.zeros([i,1], dtype: x.dtype)
+      i.times do |ii|
+        count = 0
+        n.times do |nn|
+          next if skip_indices.include? [ii,perm[nn]] or skip_indices.include? [i_zero, perm[nn]]
+          s2_est[ii] += (x[ii,nn]*m[i_zero]/x[i_zero,nn]-m[ii])**2
+          count += 1
+        end
+        s2_est[ii]/= count
+      end
+      s2_est
+    end
+
+    def invert_permutation_matrix(perm)
+      inv_perm = Array.new(perm.size, 0)
+      perm.each_with_index do |e, i|
+        inv_perm[e] = i
+      end
+      inv_perm
+    end
+
+    def permute_rows(m, perm)
+      m.transpose.permute_columns(perm).transpose
+    end
+
+    def find_permutation_nonskip(x, i)
+      n = x.shape[1]
+      lapack_perm = Array.new(n) { |nn| nn }
+      full_perm = Array.new(n) { |nn| nn }
+      first = 0
+      n.times do |nn|
+        first = nn
+        break unless skip_indices.include? [i,nn]
+      end
+      lapack_perm[0] = first
+      full_perm[0] = first
+      full_perm[first] = 0
+      [lapack_perm, full_perm]
+    end
+
+    def test_all_low_variance_solutions(n_iter, x, tol=nil)
+      n = x.shape[1]
+      i = x.shape[0]
+      best = {l: -1.0*Float::MAX}
+      i.times do |ii|
+        lapack_perm, full_perm = find_permutation_nonskip(x, ii)
+        inv_perm = invert_permutation_matrix(full_perm)
+        x_old = x
+        x = x.permute_columns(lapack_perm)
+        m_est = m_est_zerovar(x, ii, x[ii,0], inv_perm)
+        s2_est = s2_est_zerovar(x, ii, m_est, inv_perm)
+        puts "testing low variance solution ##{ii}"
+        x = x_old
+        s2_est[ii] = 1.0e-16
+
+        gamma_start = calculate_gamma_n(x, m_est, s2_est)
+        mu = m_est
+        sig2 = s2_est
+        result = nil
+        puts "initial parameters: "
+        puts "m = #{mu}"
+        puts "sig2 = #{sig2}"
+        puts "gamma = #{gamma_start}"
+        result = do_iters_with_start(n_iter, x, gamma_start, tol)
+#        result[:mu] = permute_rows(result[:mu], inv_perm)
+#        result[:sig2] = permute_rows(result[:sig2], inv_perm)
+#        result[:gamma] = permute_rows(result[:gamma], inv_perm)
+        puts "gamma at finish: #{result[:gamma]}"
+        puts "l= #{result[:l]}"
+        puts "========================="
+        if result[:l] > best[:l] then
+          best = result
+        end
+      end
+      best
     end
 
     # 
@@ -315,7 +419,7 @@ module MLRatioSolve
         yield curr
         return
       end
-      step = (max-min)/n_per
+      step = (max-min)/(n_per-1)
       min.step(max, step) do |val|
         curr[i] = val
         grid_recursive(max_depth, n_per, min, max, curr, i+1, &b)
@@ -336,25 +440,28 @@ module MLRatioSolve
     # @return [Hash] The result with the maximum likelihood among those found (
     #   see #do_iters_with_start for format)
     def grid_multiple_iters(n_starts, n_gen, n_iter, x, tol=nil)
-      n_per = (n_starts**(1.0/n_gen)).ceil
+      n_per = (n_starts**(1.0/n_gen)).floor
       min_range = 0.01
       max_range = 5.0
 
       best = {l: -1.0*Float::MAX}
-      # counter = 0
+      counter = 0
 
-      grid_recursive(n_gen, n_per, min_range, max_range, Array.new(n_gen, 0.0), 0) do |gamma|
-        result = do_iters_with_start(n_iter, x, N.new([gamma.size + 1,1],([1.0].concat(gamma))), tol)
-        if result[:l] > best[:l] then
-          best = result
-        end
-        # counter += 1
-        # if best[:mu] then
-        #   puts "Best solution found so far:"
-        #   print_parameters(best[:mu], best[:sig2], best[:gamma], x, counter)
-        # end
+#      grid_recursive(n_gen, n_per, min_range, max_range, Array.new(n_gen, 0.0), 0) do |gamma|
+#        result = do_iters_with_start(n_iter, x, N.new([gamma.size + 1,1],([1.0].concat(gamma))), tol)
+#        if result[:l] > best[:l] then
+#          best = result
+#        end
+#        counter += 1
+#        if best[:mu] then
+#          puts "Best solution found so far:"
+#          print_parameters(best[:mu], best[:sig2], best[:gamma], x, counter)
+#        end
+#      end
+      best_lv = test_all_low_variance_solutions(n_iter, x, tol)
+      if best_lv[:l] > best[:l] then
+        best = best_lv
       end
-
       best
     end
 

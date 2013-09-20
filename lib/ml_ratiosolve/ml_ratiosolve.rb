@@ -24,31 +24,6 @@
 require 'csv'
 
 require 'nmatrix'
-require 'inline'
-
-module InlineHelpers
-    # 
-    # The normal probability distribution.
-    # @param  x [Numeric] The point at which to calculate the probability density
-    # @param  m [Numeric] The mean of the distribution
-    # @param  s2 [Numeric] The variance of the distribution
-    # 
-    # @return [Float] The probability density at the specified point
-    # def normpdf(x, m, s2)
-    #   1.0/Math.sqrt(2*Math::PI*s2)*Math.exp(-(x-m)**2/(2.0*s2))
-    # end
-    inline do |builder|
-      builder.include '<math.h>'
-      builder.c "
-        double normpdf(const double x, const double m, const double s2) {
-          const double pi = 3.1415926535897932384626;
-          return 1.0/sqrt(2*pi*s2)*exp(-(x-m)*(x-m)/(2.0*s2));
-        }
-      "
-    end
-
-end
-
 # 
 # Functions for ML estimates of distribution parameters for ratios of Gaussian
 # measurements.
@@ -72,19 +47,18 @@ end
 # @author Colin J. Fuller
 # 
 module MLRatioSolve
-  self.extend InlineHelpers
   class << self
 
-    # # 
-    # # The normal probability distribution.
-    # # @param  x [Numeric] The point at which to calculate the probability density
-    # # @param  m [Numeric] The mean of the distribution
-    # # @param  s2 [Numeric] The variance of the distribution
-    # # 
-    # # @return [Float] The probability density at the specified point
-    # def normpdf(x, m, s2)
-    #   1.0/Math.sqrt(2*Math::PI*s2)*Math.exp(-(x-m)**2/(2.0*s2))
-    # end
+    # 
+    # The normal probability distribution.
+    # @param  x [Numeric] The point at which to calculate the probability density
+    # @param  m [Numeric] The mean of the distribution
+    # @param  s2 [Numeric] The variance of the distribution
+    # 
+    # @return [Float] The probability density at the specified point
+    def normpdf(x, m, s2)
+      1.0/Math.sqrt(2*Math::PI*s2)*Math.exp(-(x-m)**2/(2.0*s2))
+    end
 
     # 
     # Sets up the array of indices to skip from a string.
@@ -389,9 +363,6 @@ module MLRatioSolve
         puts "sig2 = #{sig2}"
         puts "gamma = #{gamma_start}"
         result = do_iters_with_start(n_iter, x, gamma_start, tol)
-#        result[:mu] = permute_rows(result[:mu], inv_perm)
-#        result[:sig2] = permute_rows(result[:sig2], inv_perm)
-#        result[:gamma] = permute_rows(result[:gamma], inv_perm)
         puts "gamma at finish: #{result[:gamma]}"
         puts "l= #{result[:l]}"
         puts "========================="

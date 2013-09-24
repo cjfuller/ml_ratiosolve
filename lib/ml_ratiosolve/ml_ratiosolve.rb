@@ -202,10 +202,10 @@ module MLRatioSolve
       n = x.shape[1]
       i = mu.size
       gamma = NMatrix.zeros([n,1])
-      gamma[0] = 1
-      1.upto(n-1) do |nn|
+      0.upto(n-1) do |nn|
         gamma[nn] = calculate_single_gamma(nn, x, mu, sig2)
       end
+      gamma = gamma/gamma[0] #effectively set the units to be those of the first experiment
       gamma
     end
 
@@ -418,17 +418,17 @@ module MLRatioSolve
       best = {l: -1.0*Float::MAX}
       counter = 0
 
-#      grid_recursive(n_gen, n_per, min_range, max_range, Array.new(n_gen, 0.0), 0) do |gamma|
-#        result = do_iters_with_start(n_iter, x, N.new([gamma.size + 1,1],([1.0].concat(gamma))), tol)
-#        if result[:l] > best[:l] then
-#          best = result
-#        end
-#        counter += 1
-#        if best[:mu] then
-#          puts "Best solution found so far:"
-#          print_parameters(best[:mu], best[:sig2], best[:gamma], x, counter)
-#        end
-#      end
+      grid_recursive(n_gen, n_per, min_range, max_range, Array.new(n_gen, 0.0), 0) do |gamma|
+        result = do_iters_with_start(n_iter, x, N.new([gamma.size + 1,1],([1.0].concat(gamma))), tol)
+        if result[:l] > best[:l] then
+          best = result
+        end
+        counter += 1
+        if best[:mu] then
+          puts "Best solution found so far:"
+          print_parameters(best[:mu], best[:sig2], best[:gamma], x, counter)
+        end
+      end
       best_lv = test_all_low_variance_solutions(n_iter, x, tol)
       if best_lv[:l] > best[:l] then
         best = best_lv

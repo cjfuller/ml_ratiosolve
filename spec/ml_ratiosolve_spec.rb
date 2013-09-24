@@ -30,19 +30,25 @@ describe MLRatioSolve do
   end
 
   it "should calculate a normal PDF" do
-    MLRatioSolve.normpdf(0, 0, 1).should be_within(0.01).of 0.4
+    MLRatioSolve.normpdf(0, 0, 1).should be_within(1.0e-6).of 0.3989423
   end
 
-  it "should et skip indices" do
-    pending
-  end
-
-  it "should retrieve skip indices" do
-    pending
+  it "should set and retrieve skip indices" do
+    MLRatioSolve.set_skip_indices("0,1:0,2")
+    MLRatioSolve.skip_indices.should eq [[0,1],[0,2]]
   end
 
   it "should calculate the log likelihood" do
-    pending
+    gamma = N.new([2,1],[1.0, 0.5])
+    mu = N.new([2,1], [0.0, 2.0])
+    sig2 = N.new([2,1], [1.0, 16.0])
+    x = N.new([2,2], [0.0, 0.0, 2.0, 2.0])
+    expected = N[Math.log(0.199471140200716),
+                Math.log(0.398942280401433),
+                Math.log(0.0997355701003582),
+                Math.log(0.0483335146003562)].sum.to_f
+    MLRatioSolve.log_l_fct(gamma, x, mu, sig2).should be_within(1.0e-6).of expected
+  
   end
 
   it "should calculate the ML mean estimate with uniform gamma" do
@@ -70,11 +76,21 @@ describe MLRatioSolve do
   end
 
   it "should calculate a single gamma for fixed mean and standard deviation parameters" do
-    pending
+    mu = N.new([2,1], [0.0, 2.0])
+    sig2 = N.new([2,1], [1.0, 16.0])
+    x = N.new([2,2], [0.0, 0.0, 2.0, 2.0])
+    MLRatioSolve.calculate_single_gamma(0, x, mu, sig2).should be_within(1.0e-6).of 3.3722813
   end
 
-  it "should calculate all the gammas" do
-    pending
+  it "should correctly normalize the set of gammas" do
+    mu = N.new([2,1], [0.0, 2.0])
+    sig2 = N.new([2,1], [1.0, 16.0])
+    x = N.new([2,2], [0.0, 0.0, 2.0, 2.0])
+    result = MLRatioSolve.calculate_gamma_n(x, mu, sig2)
+    g0 = MLRatioSolve.calculate_single_gamma(0,x,mu,sig2)
+    g1 = MLRatioSolve.calculate_single_gamma(1,x,mu,sig2)
+
+    result.should eq N[[g0],[g1]]/g0
   end
 
   it "should perform a single iteration" do

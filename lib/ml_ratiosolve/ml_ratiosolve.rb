@@ -125,7 +125,7 @@ module MLRatioSolve
     def calculate_mu_i(gamma, x)
       n = gamma.size
       i = x.shape[0]
-      mu = NMatrix.zeros([i,1])
+      mu = NMatrix.zeros([i,1], stype: :dense)
       if skip_indices.empty? then
         mu = x.dot(gamma) / n
       else
@@ -158,7 +158,7 @@ module MLRatioSolve
     def calculate_sig2_i(gamma, x, mu)
       n = gamma.size
       i = mu.size
-      sig2 = NMatrix.zeros([i,1])
+      sig2 = NMatrix.zeros([i,1], stype: :dense)
       
       i.times do |ii|
         count = 0
@@ -201,7 +201,7 @@ module MLRatioSolve
     def calculate_gamma_n(x, mu, sig2)
       n = x.shape[1]
       i = mu.size
-      gamma = NMatrix.zeros([n,1])
+      gamma = NMatrix.zeros([n,1], stype: :dense)
       0.upto(n-1) do |nn|
         gamma[nn] = calculate_single_gamma(nn, x, mu, sig2)
       end
@@ -280,10 +280,22 @@ module MLRatioSolve
         gamma: gamma, l: log_l_fct(gamma, x, calculate_mu_i(gamma,x), calculate_sig2_i(gamma, x, calculate_mu_i(gamma,x)))}
     end
 
+    #
+    # Estimates the mean given that one treatment is fixed at ~ zero variance.
+    # 
+    # @param x [NMatrix] the experimental data (IxN matrix)
+    # @param i_zero [Integer] the index of the zero variance treatment
+    # @param mi [Numeric] the mean for the zero variance treatment
+    # @param perm [Array] a permutation array mapping the permuted data
+    #   indices to their original indices (non-lapack format, see
+    #   #invert_permutation_matrix)
+    #
+    # @return [NMatrix] the estimate of the means (Ix1)
+    #
     def m_est_zerovar(x,i_zero,mi,perm)
       n = x.shape[1]
       i = x.shape[0]
-      m = N.zeros([i,1], dtype: x.dtype)
+      m = N.zeros([i,1], dtype: x.dtype, stype: :dense)
       i.times do |ii|
         count = 0
         n.times do |nn|
@@ -296,10 +308,23 @@ module MLRatioSolve
       m
     end
 
+    #
+    # Estimates the variances given that one treatment is fixed at ~ zero
+    # variance.
+    #
+    # @param x [NMatrix] the experimental data (IxN matrix)
+    # @param i_zero [Integer] the index of the zero variance treatment
+    # @param m [NMatrix] the mean estimates (as output by #m_est_zerovar)
+    # @param perm [Array] a permutation array mapping the permuted data indices
+    #   to their original indices (non-lapack format, see
+    #   #invert_permutation_matrix)
+    # 
+    # @return [NMatrix] the estimate of the variances (Ix1)
+    #
     def s2_est_zerovar(x, i_zero, m, perm)
       n = x.shape[1]
       i = x.shape[0]
-      s2_est = N.zeros([i,1], dtype: x.dtype)
+      s2_est = N.zeros([i,1], dtype: x.dtype, stype: :dense)
       i.times do |ii|
         count = 0
         n.times do |nn|
@@ -312,6 +337,16 @@ module MLRatioSolve
       s2_est
     end
 
+    #
+    # Inverts a permutation so that it maps permuted data back to the original
+    # data.
+    #
+    # @param perm [Array] the permutation to invert. (Not lapack format but
+    # where perm[i] = j indicates that in the final permuted matrix column j is
+    # the original column i.
+    #
+    # @return [Array] the inverted permutation.
+    #
     def invert_permutation_matrix(perm)
       inv_perm = Array.new(perm.size, 0)
       perm.each_with_index do |e, i|
@@ -320,10 +355,31 @@ module MLRatioSolve
       inv_perm
     end
 
+    #
+    # Permute the rows of a matrix (using a transpose and permute_columns
+    # method).
+    #
+    # @param m [NMatrix] the matrix to permute
+    # @param perm [Array] the permutation (in lapack format)
+    #
+    # @return [NMatrix] the permuted data matrix
+    #
     def permute_rows(m, perm)
       m.transpose.permute_columns(perm).transpose
     end
 
+    #
+    # Find a permutation of experiments such that the ith treatment is not skipped in the
+    # first experiment after the permutation.
+    #
+    # @param x [NMatrix] the experimental data
+    # @param i [Integer] the index of the treatment to make sure is not skipped
+    #   in the first experiment
+    #
+    # @return [Array] an array containing two elements: a permuation array in
+    # each of lapack and non-lapack formats.  (See #invert_permutation_matrix
+    # for non-lapack format.)
+    #
     def find_permutation_nonskip(x, i)
       n = x.shape[1]
       lapack_perm = Array.new(n) { |nn| nn }
@@ -339,6 +395,19 @@ module MLRatioSolve
       [lapack_perm, full_perm]
     end
 
+    #
+    # Test all solutions where the variance of one treatment is ~ zero.
+    #
+    # @param n_iter [Integer] the number of iterations to run starting from the
+    #   low variance solution.
+    # @param x [NMatrix] the experimental data (IxN)
+    # @param tol [Numeric] if non-nil, the iterations will terminate early 
+    #   if the absolute change in the likelihood between two successive 
+    #   iterations is less than this
+    # 
+    # @return [Hash] the maximum likelihood solution from those tested. 
+    #   (see #do_iters_with_start for format)
+    #
     def test_all_low_variance_solutions(n_iter, x, tol=nil)
       n = x.shape[1]
       i = x.shape[0]
@@ -350,7 +419,7 @@ module MLRatioSolve
         x = x.permute_columns(lapack_perm)
         m_est = m_est_zerovar(x, ii, x[ii,0], inv_perm)
         s2_est = s2_est_zerovar(x, ii, m_est, inv_perm)
-        puts "testing low variance solution ##{ii}"
+        #puts "testing low variance solution ##{ii}"
         x = x_old
         s2_est[ii] = 1.0e-16
 
@@ -358,14 +427,14 @@ module MLRatioSolve
         mu = m_est
         sig2 = s2_est
         result = nil
-        puts "initial parameters: "
-        puts "m = #{mu}"
-        puts "sig2 = #{sig2}"
-        puts "gamma = #{gamma_start}"
+        #puts "initial parameters: "
+        #puts "m = #{mu}"
+        #puts "sig2 = #{sig2}"
+        #puts "gamma = #{gamma_start}"
         result = do_iters_with_start(n_iter, x, gamma_start, tol)
-        puts "gamma at finish: #{result[:gamma]}"
-        puts "l= #{result[:l]}"
-        puts "========================="
+        #puts "gamma at finish: #{result[:gamma]}"
+        #puts "l= #{result[:l]}"
+        #puts "========================="
         if result[:l] > best[:l] then
           best = result
         end

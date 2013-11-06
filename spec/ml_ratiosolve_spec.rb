@@ -94,16 +94,26 @@ describe MLRatioSolve do
   end
 
   it "should perform a single iteration" do
-    pending
+    gamma = N.new([3,1], [1,2,1], dtype: :float64)
+    x = N.new([2,3], [0,3,6,1,4,7], dtype: :float64)
+    m = MLRatioSolve.calculate_mu_i(gamma,x)
+    s2= MLRatioSolve.calculate_sig2_i(gamma, x, m)
+    gamma_new = MLRatioSolve.calculate_gamma_n(x, m, s2)
+    MLRatioSolve.do_single_iteration(gamma, x, 0).should eq gamma_new  
   end
 
   it "should not regress on results of a set of iterations" do
     pending
   end
 
+
   context "grid search" do
     it "should grid the correct number of iterations" do
-      pending    
+      count = 0
+      MLRatioSolve.grid_recursive(4, 5, 0.0, 1.0, [0.0, 0.0, 0.0, 0.0], 0) do 
+        count += 1
+      end
+      count.should eq 5**4
     end
 
     it "should not regress on multiple gridded iterations" do
@@ -125,24 +135,20 @@ describe MLRatioSolve do
     end
 
     it "should find a permutation such that the 0th entry of a given low variance treatment is not skipped" do
-      pending
+      x = N.new([2,2], [0,1,2,3])
+      MLRatioSolve.set_skip_indices "0,0"
+      MLRatioSolve.find_permutation_nonskip(x, 0).should eq [[1,1], [1,0]]
     end
 
     it "should be able to invert a permutation matrix" do
-      pending
+      MLRatioSolve.invert_permutation_matrix([0,2,3,1]).should eq [0,3,1,2]
     end
 
     it "should be able to permute rows of a matrix" do
-      pending
+      m = N.new([2,2], [0,1,2,3])
+      MLRatioSolve.permute_rows(m, [1,1]).should eq N.new([2,2], [2,3,0,1])
     end
 
   end
-
-  context "error assessment" do
-    it "should correctly calculate the SEM estimate" do
-      pending
-    end
-  end
-
 end
 

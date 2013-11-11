@@ -4,6 +4,3 @@ source 'https://rubygems.org'
 gemspec
 
 gem 'nmatrix', '>= 0.0.9', path: '/home/cfuller/git/nmatrix'
-group :development do
-  gem "pry"
-end

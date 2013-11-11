@@ -176,6 +176,15 @@ module MLRatioSolve
       sig2
     end
 
+    #
+    # Given the mean and variance parameters, calculate the ML estimate of a
+    # single experimental scale factor.
+    # 
+    # @param nn [Integer] the index of the scale factor to calculate.
+    # @see #calculate_gamma_n
+    # 
+    # @return [Numeric] The ML estimate for the scale factor.
+    # 
     def calculate_single_gamma(nn, x, mu, sig2)
       xm_over_s2 = 0
       x2_over_s2 = 0
@@ -396,6 +405,29 @@ module MLRatioSolve
     end
 
     #
+    # Test a single low variance solution.
+    # 
+    # @param ii [Integer] the index of the low variance treatment.
+    # @see #test_all_low_variance_solutions
+    # 
+    def test_single_low_variance_solution(ii, n_iter, x, tol=nil)
+      lapack_perm, full_perm = find_permutation_nonskip(x, ii)
+      inv_perm = invert_permutation_matrix(full_perm)
+      x_old = x
+      x = x.permute_columns(lapack_perm)
+
+      m_est = m_est_zerovar(x, ii, x[ii,0], inv_perm)
+      s2_est = s2_est_zerovar(x, ii, m_est, inv_perm)
+      s2_est[ii] = 1.0e-16
+      
+      x = x_old
+
+      gamma_start = calculate_gamma_n(x, m_est, s2_est)
+      do_iters_with_start(n_iter, x, gamma_start, tol)
+    end
+
+
+    #
     # Test all solutions where the variance of one treatment is ~ zero.
     #
     # @param n_iter [Integer] the number of iterations to run starting from the
@@ -413,28 +445,7 @@ module MLRatioSolve
       i = x.shape[0]
       best = {l: -1.0*Float::MAX}
       i.times do |ii|
-        lapack_perm, full_perm = find_permutation_nonskip(x, ii)
-        inv_perm = invert_permutation_matrix(full_perm)
-        x_old = x
-        x = x.permute_columns(lapack_perm)
-        m_est = m_est_zerovar(x, ii, x[ii,0], inv_perm)
-        s2_est = s2_est_zerovar(x, ii, m_est, inv_perm)
-        #puts "testing low variance solution ##{ii}"
-        x = x_old
-        s2_est[ii] = 1.0e-16
-
-        gamma_start = calculate_gamma_n(x, m_est, s2_est)
-        mu = m_est
-        sig2 = s2_est
-        result = nil
-        #puts "initial parameters: "
-        #puts "m = #{mu}"
-        #puts "sig2 = #{sig2}"
-        #puts "gamma = #{gamma_start}"
-        result = do_iters_with_start(n_iter, x, gamma_start, tol)
-        #puts "gamma at finish: #{result[:gamma]}"
-        #puts "l= #{result[:l]}"
-        #puts "========================="
+        result = test_single_low_variance_solution(ii, n_iter, x, tol)
         if result[:l] > best[:l] then
           best = result
         end

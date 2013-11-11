@@ -36,8 +36,15 @@ describe ErrorBootstrapping do
   end
 
   context "data generation" do
-    it "should generate a data matrix of the correct size" do
-      pending
+    it "should generate a data matrix of the correct shape" do
+      MLRatioSolve.set_skip_indices ""
+      gamma = N.new([2,1],[1.0, 0.5])
+      mu = N.new([2,1], [0.0, 2.0])
+      sig2 = N.new([2,1], [1.0, 16.0])
+      x = N.new([2,2], [0.0, 0.0, 2.0, 2.0])
+
+      x_gen = ErrorBootstrapping.gen_data({mu: mu, sig2: sig2, gamma: gamma}, x)
+      x_gen.shape.should eq [2,2]
     end
   end
 end

@@ -102,11 +102,6 @@ describe MLRatioSolve do
     MLRatioSolve.do_single_iteration(gamma, x, 0).should eq gamma_new  
   end
 
-  it "should not regress on results of a set of iterations" do
-    pending
-  end
-
-
   context "grid search" do
     it "should grid the correct number of iterations" do
       count = 0
@@ -116,22 +111,20 @@ describe MLRatioSolve do
       count.should eq 5**4
     end
 
-    it "should not regress on multiple gridded iterations" do
-      pending
-    end
   end
 
   context "low variance solution search" do
-    it "should test the correct low variance solutions" do
-      pending
-    end
 
     it "should calculate the starting means for the low variance case" do
-      pending
+      x = N.new([2,2], [5.0, 1.0, 2.0, 3.0])
+      me = MLRatioSolve.m_est_zerovar(x, 0, x[0,0], [0,1])
+      me.should eq N.new([2,1], [5.0, 8.5])
     end
 
     it "should calculate the starting variances for the low variance case" do
-      pending
+      x = N.new([2,2], [5.0, 1.0, 2.0, 3.0])
+      se = MLRatioSolve.s2_est_zerovar(x, 0, MLRatioSolve.m_est_zerovar(x, 0, x[0,0], [0,1]), [0,1])
+      se.should eq N.new([2,1], [0.0, 42.25])
     end
 
     it "should find a permutation such that the 0th entry of a given low variance treatment is not skipped" do

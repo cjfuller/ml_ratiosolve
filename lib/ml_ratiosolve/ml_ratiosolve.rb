@@ -49,11 +49,19 @@ require 'nmatrix'
 module MLRatioSolve
   class << self
 
+    #
+    # Set whether to use quiet mode.  In quiet mode, no intermediate results
+    # are written to output.
+    # @param q [Boolean] whether to activate quiet mode
+    def quiet_mode(q)
+      @quiet_mode = q
+    end
+
     # 
     # The normal probability distribution.
-    # @param  x [Numeric] The point at which to calculate the probability density
-    # @param  m [Numeric] The mean of the distribution
-    # @param  s2 [Numeric] The variance of the distribution
+    # @param x [Numeric] The point at which to calculate the probability density
+    # @param m [Numeric] The mean of the distribution
+    # @param s2 [Numeric] The variance of the distribution
     # 
     # @return [Float] The probability density at the specified point
     def normpdf(x, m, s2)
@@ -231,6 +239,7 @@ module MLRatioSolve
     # 
     # @return [void]
     def print_parameters(mu, sig2, gamma, x, iternum)
+      return nil if @quiet_mode
       puts "="*10
       puts "At iteration number #{iternum}:"
       puts "mu = #{mu.to_s}"
@@ -505,7 +514,7 @@ module MLRatioSolve
         end
         counter += 1
         if best[:mu] then
-          puts "Best solution found so far:"
+          puts "Best solution found so far:" unless @quiet_mode
           print_parameters(best[:mu], best[:sig2], best[:gamma], x, counter)
         end
       end
@@ -553,7 +562,19 @@ module MLRatioSolve
     # 
     # @return [NMatrix] an IxN nmatrix containing the experimental data
     def read_data_from_file(fn)
-      N[*(CSV.read(fn).map{ |e| e.map{ |i| i.to_f } })]
+      File.open(fn) do |f|
+        read_data_from_io(f)
+      end
+    end
+
+    # 
+    # Reads csv-formatted datapoints from an IO object.  Data should be
+    # arranged with columns as independent experiments and rows as treatments.
+    # @param io [IO] The IO from which to read the data.
+    # 
+    # @return [NMatrix] an IxN nmatrix containing the experimental data
+    def read_data_from_io(io)
+      N[*(CSV.new(io).map{ |e| e.map{ |i| i.to_f } })]
     end
   end
 end

@@ -13,6 +13,8 @@ opts = Trollop::options do
   opt :ci_level, "Float in the range 0-1 specifiying the level of confidence interval to calculate.  E.g. 0.95 will calculate a 95% confidence interval", type: :float, default: 0.95
   opt :skip, "If some experiments are missing datapoints, specifiy which ones here.  These should be specified as (0-indexed) treatment,experiment pairs, with a comma separating treatment and experiment and a colon separating successive pairs.  E.g. to skip the first and second treatments in the first experiment: '0,0:1,0'", type: :string, default: ""
   opt :norm_index, "Normalize so that the mean value of the specified treatment is set to 1.", type: :integer, default: 0
+  opt :stdin, "Read from standard input rather than a file."
+  opt :quiet, "Only write the final result to standard output."
 end
 
 MLRatioSolveBin.go(opts)

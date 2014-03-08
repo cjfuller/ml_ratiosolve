@@ -37,7 +37,17 @@ module MLRatioSolveBin
 
     MLRatioSolve.set_skip_indices(opts[:skip])
 
-    x = MLRatioSolve.read_data_from_file(opts[:file])
+    x = nil
+
+    if opts[:stdin] then
+      x = MLRatioSolve.read_data_from_io(STDIN)
+    else
+      x = MLRatioSolve.read_data_from_file(opts[:file])
+    end
+
+    if opts[:quiet] then
+      MLRatioSolve.quiet_mode(true)
+    end
 
     n_gammas_to_fit = x.shape[1] - 1
 

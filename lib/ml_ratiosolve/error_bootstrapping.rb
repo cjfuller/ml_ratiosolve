@@ -1,17 +1,17 @@
 #--
 # error_bootstrapping.rb
 # Copyright (c) 2013 Colin J. Fuller
-# 
+#
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the Software), to deal
 # in the Software without restriction, including without limitation the rights
 # to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
-# 
+#
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
-# 
+#
 # THE SOFTWARE IS PROVIDED AS IS, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 # IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 # FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -21,20 +21,20 @@
 # SOFTWARE.
 #++
 
-# 
+#
 # Methods for using parametric bootstrapping to estimate confidence intervals
 # for the ML ratio estimation.
-# 
+#
 # @author Colin J. Fuller
-# 
+#
 module ErrorBootstrapping
   class << self
 
-    # 
+    #
     # Generate a random normal variate using the Box-Muller transform
     # @param  mu [Numeric] The desired mean
     # @param  s2 [Numeric] The desired variance
-    # 
+    #
     # @return [Float] A random variate from the normal distribution with 
     #   supplied parameters
     def randnorm(mu, s2)
@@ -48,10 +48,10 @@ module ErrorBootstrapping
     # Generate a set of simulated data consisting of random numbers drawn from 
     # the distributions with the supplied parameters
     # @param  parameters [Hash] A hash containing the mean, variance, and scale
-    #   parameters formatted like the output from 
+    #   parameters formatted like the output from
     #   MLRatioSolve::do_iters_with_start
     # @param  x [NMatrix] The original experimental data
-    # 
+    #
     # @return [NMatrix] A matrix of simulated data with the same dimensions as 
     # x.  Any skipped data points (as returned by MLRatioSolve::skip_indices) 
     # will be set to 0 here.
@@ -75,7 +75,7 @@ module ErrorBootstrapping
     end
 
 
-    # 
+    #
     # Re-estimate distribution parameters by generating simulated data a number 
     # of times and performing the iterative estimation in MLRatioSolve
     # @param  n_gen [Numeric] number of datasets to simulate
@@ -85,7 +85,7 @@ module ErrorBootstrapping
     # @param  tol=nil [Numeric] if non-nil, the iterations will terminate early 
     #   if the absolute change in the likelihood between two successive 
     #   iterations is less than this
-    # 
+    #
     # @return [Array] An array containing n_gen hashes, each of which is the 
     #   result of the estimation run on one simulated dataset.
     def estimate_with_gen_data(n_gen, parameters, x, n_iter, tol=nil)
@@ -98,7 +98,7 @@ module ErrorBootstrapping
     end
 
 
-    # 
+    #
     # Calculate a bootstrapped confidence interval from the output of 
     # #estimate_with_gen_data.
     # @param  results [Array] An array of hashes as output from 
@@ -106,7 +106,7 @@ module ErrorBootstrapping
     # @param  level [Float] A number between 0 and 1 that is the level of the 
     #   confidence interval.  For instance, a value of 0.95 will lead to 
     #   calculation of the bounds on the central 95% of values.
-    # 
+    #
     # @return [Array] an array of two NMatrix objects, the lower bound on the   
     #   CI and the upper bound on the CI
     def bootstrap_ci(results, level)
